@@ -1,7 +1,51 @@
+# jobs:
+#   build:
+#     docker:
+#       - image: cimg/node:23.10.0
+#     steps:
+#       - checkout
+#       - run: npm install
+#       - run: node one.js
+
+version: 2.1
+ 
 jobs:
   build:
     docker:
       - image: cimg/node:23.10.0
     steps:
       - checkout
+      - run: npm install
       - run: node one.js
+      - persist_to_workspace:
+          root: .
+          paths:
+            - one.js
+
+  deploy:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - run:
+          name: Install tar
+          command: yum install -y tar gzip
+      - attach_workspace:
+          at: /workspace
+      - run:
+          name: Configure AWS Credentials
+          command: |
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+            aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+      - run: aws s3 sync /workspace s3://node-task-03 --delete
+ 
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+ 
+      
+
